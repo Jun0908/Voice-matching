@@ -1,3 +1,8 @@
+export function comparisonPan(side: "left" | "right", stereo: boolean) {
+  if (!stereo) return 0;
+  return side === "left" ? -1 : 1;
+}
+
 export class VoicePlayer {
   private context: AudioContext | null = null;
   private source: AudioBufferSourceNode | null = null;

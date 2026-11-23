@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { VoicePlayer } from "../src/lib/audio";
+import { comparisonPan, VoicePlayer } from "../src/lib/audio";
 
 test("audio switches stop the previous source, pan can be centered, and disposal releases audio", async () => {
   let active = 0;
@@ -36,14 +36,14 @@ test("audio switches stop the previous source, pan can be centered, and disposal
   globalThis.fetch = async () => new Response(new ArrayBuffer(4));
   try {
     const player = new VoicePlayer();
-    await player.play("/left.wav", -.65, () => {});
+    await player.play("/left.wav", comparisonPan("left", true), () => {});
     assert.equal(active, 1);
-    assert.equal(panners.at(-1)?.pan.value, -.65);
-    await player.play("/right.wav", .65, () => {});
+    assert.equal(panners.at(-1)?.pan.value, -1);
+    await player.play("/right.wav", comparisonPan("right", true), () => {});
     assert.equal(active, 1);
     assert.equal(peakActive, 1);
-    assert.equal(panners.at(-1)?.pan.value, .65);
-    player.setPan(0);
+    assert.equal(panners.at(-1)?.pan.value, 1);
+    player.setPan(comparisonPan("right", false));
     assert.equal(panners.at(-1)?.pan.value, 0);
     let ended = false;
     await player.play("/end.wav", 0, () => { ended = true; });
@@ -77,7 +77,7 @@ test("a stopped pending audio download cannot begin playing after a later choice
   globalThis.fetch = () => new Promise(resolve => { releaseDownload = resolve; });
   try {
     const player = new VoicePlayer();
-    const pending = player.play("/slow.wav", -.65, () => {});
+    const pending = player.play("/slow.wav", comparisonPan("left", true), () => {});
     await Promise.resolve();
     player.stop();
     releaseDownload(new Response(new ArrayBuffer(4)));

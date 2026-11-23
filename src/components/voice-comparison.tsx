@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import voices from "@/data/voices.json";
 import { useStore } from "@/lib/store";
-import { VoicePlayer } from "@/lib/audio";
+import { comparisonPan, VoicePlayer } from "@/lib/audio";
 import type { Choice, Voice } from "@/features/comparison/model";
 import { VoiceArt } from "@/components/voice-art";
 
@@ -27,7 +27,9 @@ export function VoiceComparison() {
   const complete = !!session && index === session.pairs.length;
   useEffect(() => { const player = new VoicePlayer(); engine.current = player; return () => { player.dispose(); if (unlockTimer.current) clearTimeout(unlockTimer.current); }; }, []);
   useEffect(() => { if (complete) router.replace("/insights"); }, [complete, router]);
-  useEffect(() => { engine.current?.setPan(state.stereo ? active === "left" ? -.65 : .65 : 0); }, [state.stereo, active]);
+  useEffect(() => {
+    if (active) engine.current?.setPan(comparisonPan(active, state.stereo));
+  }, [state.stereo, active]);
   useEffect(() => {
     if (!active) return;
     let frame = 0;
@@ -56,7 +58,7 @@ export function VoiceComparison() {
     if (active === side || loading === side) { setActive(null); setLoading(null); return; }
     setActive(null); setLoading(side);
     try {
-      const started = await engine.current?.play(voice.file, state.stereo ? side === "left" ? -.65 : .65 : 0, () => { setActive(null); setProgress(1); });
+      const started = await engine.current?.play(voice.file, comparisonPan(side, state.stereo), () => { setActive(null); setProgress(1); });
       if (token !== request.current) return;
       if (started) { setActive(side); setHeard(previous => [...new Set([...previous, voice.id])]); }
     } catch { if (token === request.current) setAudioError("音声を読み込めませんでした。接続を確認し、再生ボタンでもう一度お試しください。"); }
@@ -64,7 +66,7 @@ export function VoiceComparison() {
   };
   return <>
     <div className="comparison-toolbar"><div className="session-progress"><span>ROUND</span><strong>{index + 1} <span>/ {session.pairs.length}</span></strong><div className="step-dots" aria-hidden="true">{session.pairs.map((_, i) => <span className={i < index ? "done" : i === index ? "current" : ""} key={i} />)}</div></div><div className="listen-tip"><Headphones size={17} /><span>イヤホン推奨</span></div></div>
-    <div className="page-heading comparison-heading"><span className="eyebrow">2人の声を、聴きくらべ。</span><h1>どっちの声が好き？</h1><p>もっと聴きたい。その直感を大切に。</p></div>
+    <div className="page-heading comparison-heading"><span className="eyebrow">2人の声を、聴きくらべ。</span><h1>どっちの声が好き？</h1><p>{state.stereo ? "イヤホンで、左の声は左耳だけ、右の声は右耳だけに。" : "中央再生中。左右どちらの声も両耳に流れます。"}</p></div>
     <div className="voice-pair" key={index}>{(["left", "right"] as const).map(side => {
       const voice = voices.find(v => v.id === pair[side])!;
       const playing = active === side;
