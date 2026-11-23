@@ -1,19 +1,24 @@
 import { expect, test } from "@playwright/test";
 
-test("compare five pairs, recover progress, show counts and persist demo matches", async ({ page }) => {
+test("compare five pairs, recover progress, show counts and persist demo matches", async ({ page, browserName }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /声を聴きはじめる/ }).click();
   await expect(page.locator(".voice-card")).toHaveCount(2);
   const lastChoice = await page.getByRole("button", { name: "どちらでもない", exact: true }).boundingBox();
   const nav = await page.getByRole("navigation", { name: "モバイルナビゲーション" }).boundingBox();
   expect(lastChoice!.y + lastChoice!.height).toBeLessThanOrEqual(nav!.y);
+  await page.screenshot({ path: `test-results/comparison-${browserName}.png`, fullPage: true });
   await page.getByRole("button", { name: "左の声を再生", exact: true }).click();
-  await expect(page.locator(".voice-card.left")).toHaveClass(/playing/);
-  await page.getByRole("button", { name: "右の声を再生", exact: true }).click();
-  await expect(page.locator(".voice-card.right")).toHaveClass(/playing/);
-  await expect(page.locator(".voice-card.left")).not.toHaveClass(/playing/);
-  await page.getByRole("button", { name: "右の声を停止" }).click();
-  await expect(page.locator(".voice-card.right")).not.toHaveClass(/playing/);
+  if (await page.evaluate(() => typeof window.AudioContext !== "undefined")) {
+    await expect(page.locator(".voice-card.left")).toHaveClass(/playing/);
+    await page.getByRole("button", { name: "右の声を再生", exact: true }).click();
+    await expect(page.locator(".voice-card.right")).toHaveClass(/playing/);
+    await expect(page.locator(".voice-card.left")).not.toHaveClass(/playing/);
+    await page.getByRole("button", { name: "右の声を停止" }).click();
+    await expect(page.locator(".voice-card.right")).not.toHaveClass(/playing/);
+  } else {
+    await expect(page.locator("main [role=alert]")).toContainText("音声再生に対応していません");
+  }
   await page.getByRole("button", { name: "左が好き", exact: true }).click();
   const before = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!).session);
   await page.reload();
@@ -45,6 +50,7 @@ test("compare five pairs, recover progress, show counts and persist demo matches
 
 test("failed audio is retryable; rapid choices never submit a second pair", async ({ page }) => {
   await page.goto("/"); await page.getByRole("button", { name: /声を聴きはじめる/ }).click();
+  test.skip(!await page.evaluate(() => typeof window.AudioContext !== "undefined"), "Windows WebKit build has no Web Audio; tested in Chromium");
   await page.route("**/audio/demo/*", route => route.abort());
   await page.getByRole("button", { name: "左の声を再生", exact: true }).click();
   await expect(page.locator("main [role=alert]")).toContainText("音声を読み込めませんでした");
@@ -56,13 +62,48 @@ test("failed audio is retryable; rapid choices never submit a second pair", asyn
   expect(count).toBe(1);
 });
 
-test("360px layouts fit every route and expose labeled navigation", async ({ page }) => {
+test("360px layouts fit every route and expose labeled navigation", async ({ page, browserName }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
   for (const path of ["/", "/welcome", "/record", "/insights", "/matches", "/profile"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.getByRole("navigation", { name: "モバイルナビゲーション" })).toBeVisible();
+    if (browserName === "chromium") {
+      await page.keyboard.press("Tab");
+      await expect(page.locator(".skip-link")).toBeFocused();
+    }
   }
+});
+
+test("onboarding and profile edits persist and a new session retains previous answers", async ({ page }) => {
+  await page.goto("/welcome");
+  await page.getByLabel("ニックネーム").fill("はる");
+  await page.getByRole("combobox", { name: "年齢", exact: true }).selectOption("25〜29歳");
+  await page.getByLabel("お住まいの地域").fill("東京都");
+  await page.getByLabel("希望する出会い").selectOption("まずは会話を楽しみたい");
+  await page.getByRole("button", { name: /声の出会いをはじめる/ }).click();
+  await expect(page.locator(".voice-card")).toHaveCount(2);
+  await page.goto("/profile");
+  await expect(page.getByLabel("ニックネーム")).toHaveValue("はる");
+  await page.getByLabel("ニックネーム").fill("はるか");
+  await page.getByLabel("大切にしていること").fill("自然に話せる時間を大切にしています。");
+  await page.getByRole("button", { name: "プロフィールを保存", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("保存しました");
+  await page.getByRole("switch", { name: /プロフィールの公開希望/ }).check();
+  await page.reload();
+  await expect(page.getByLabel("ニックネーム")).toHaveValue("はるか");
+  await expect(page.getByLabel("お住まいの地域")).toHaveValue("東京都");
+  await expect(page.getByLabel("希望する出会い")).toHaveValue("まずは会話を楽しみたい");
+  await expect(page.getByRole("switch", { name: /プロフィールの公開希望/ })).toBeChecked();
+  await page.goto("/");
+  for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "どちらも好き", exact: true }).click();
+  const originalId = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!).session.id);
+  await page.getByRole("button", { name: "新しい5組を聴く", exact: true }).click();
+  const data = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!));
+  expect(data.session.id).not.toBe(originalId);
+  expect(data.session.answers).toHaveLength(0);
+  expect(data.history[0].answers).toHaveLength(5);
 });
 
 test("real MediaRecorder fake microphone: minimum, preview, persistence, cancellation and deletion", async ({ page, context, browserName }) => {
@@ -105,11 +146,15 @@ test("real MediaRecorder fake microphone: minimum, preview, persistence, cancell
 
 test("microphone denial, missing recorder and storage quota have actionable errors", async ({ page }) => {
   await page.addInitScript(() => {
-    navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("denied", "NotAllowedError"); };
+    if (navigator.mediaDevices) navigator.mediaDevices.getUserMedia = async () => { throw new DOMException("denied", "NotAllowedError"); };
   });
   await page.goto("/record");
   await page.getByRole("button", { name: "録音をはじめる" }).click();
-  await expect(page.locator("main [role=alert]")).toContainText("サイト設定でマイクを許可");
+  if (await page.evaluate(() => !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== "undefined")) {
+    await expect(page.locator("main [role=alert]")).toContainText("サイト設定でマイクを許可");
+  } else {
+    await expect(page.locator("main [role=alert]")).toContainText("このブラウザでは録音できません");
+  }
   await page.evaluate(() => Object.defineProperty(window, "MediaRecorder", { value: undefined, configurable: true }));
   await page.getByRole("button", { name: "録音をはじめる" }).click();
   await expect(page.locator("main [role=alert]")).toContainText("このブラウザでは録音できません");

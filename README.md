@@ -68,7 +68,7 @@ npx playwright install chromium webkit
 npm run test:e2e
 ```
 
-E2Eは本番サーバーを自動起動します。ポート3000を使用中の場合は同じアプリの本番サーバーであることを確認してください。Chromiumの録音テストは疑似マイクを使い、WebKitでは疑似マイクに依存するテストをスキップします。
+E2Eは本番サーバーを自動起動します。ポート3000を使用中の場合は同じアプリの本番サーバーであることを確認してください。Chromiumの録音テストは疑似マイクを使います。このWindows版WebKitは音声APIを持たないため、音声に依存する3ケースを理由付きでスキップします。
 
 対象と結果、実機での残確認は [検証記録](docs/QA.md) を参照してください。Windows上のChromium／WebKitでのエミュレーションは、iOS Safari／Android Chrome実機の検証を代替しません。
 
