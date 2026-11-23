@@ -27,5 +27,10 @@ export default function ProfilePage() {
     <section className="panel"><h2><Headphones size={20} />再生と公開の設定</h2><label className="switch-row"><span><strong>ステレオ定位</strong><span>オンにすると、イヤホンでは左の声は左耳だけ、右の声は右耳だけに流れます。オフで中央再生。</span></span><input type="checkbox" role="switch" checked={state.stereo} onChange={e => update(s => ({ ...s, stereo: e.target.checked }))} /></label><label className="switch-row"><span><strong>プロフィールの公開希望</strong><span>この端末内の状態です。インターネットには公開されません。</span></span><input type="checkbox" role="switch" checked={state.profile.visible} onChange={e => update(s => ({ ...s, profile: { ...s.profile, visible: e.target.checked } }))} /></label></section>
     <section className="panel"><div className="section-row"><h2><Mic size={20} />保存した声</h2><Link className="text-link" href="/record">録音・差し替え</Link></div><p className="fine">自己紹介と各質問の回答を個別に保存します。差し替えは新しい録音の保存時に確定します。</p>{recordError && <p role="alert" className="notice">{recordError}</p>}{recordings.length ? recordings.map(recording => <RecordingItem recording={recording} onChange={reload} key={recording.kind} />) : <p className="muted">まだ保存した録音がありません。</p>}</section>
     <section className="panel"><h2><EyeOff size={20} />非表示にした候補</h2><p className="fine">非表示は候補一覧と次のセッションに反映します。進行中の比較と過去の履歴は維持します。</p>{!state.hidden.length ? <p className="muted">非表示の候補はいません。</p> : state.hidden.map(id => <div className="hidden-row" key={id}><span>{voices.find(v => v.id === id)?.name}</span><button className="button" onClick={() => update(s => ({ ...s, hidden: s.hidden.filter(v => v !== id) }))}>表示を戻す</button></div>)}</section>
+    <details className="panel"><summary>ASMRボイスの名前とクレジット</summary>
+      <dl>{voices.map(voice => <div className="hidden-row" key={voice.id}>
+        <dt><strong>{voice.name}</strong></dt><dd><a className="text-link" href={voice.license}>{voice.source}</a></dd>
+      </div>)}</dl>
+    </details>
     <div className="privacy-note"><LockKeyhole size={20} /><p>比較履歴・設定・録音はこのブラウザに保存されます。ブラウザのデータ削除や端末変更では引き継げません。本番のアカウントと通信機能は未接続です。</p></div></>;
 }

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import voices from "../../src/data/voices.json";
 
 test("compare five pairs, recover progress, show counts and persist demo matches", async ({ page, browserName }) => {
   await page.goto("/");
@@ -21,10 +22,10 @@ test("compare five pairs, recover progress, show counts and persist demo matches
     await expect(page.locator("main [role=alert]")).toContainText("音声再生に対応していません");
   }
   await page.getByRole("button", { name: "左が好き", exact: true }).click();
-  const before = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!).session);
+  const before = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:asmr:v1")!).session);
   await page.reload();
   await expect(page.locator(".session-progress strong")).toContainText("2");
-  const after = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!).session);
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:asmr:v1")!).session);
   expect(after).toEqual(before);
   for (const choice of ["右が好き", "どちらも好き", "どちらでもない", "どちらも好き"]) await page.getByRole("button", { name: choice, exact: true }).click();
   await expect(page).toHaveURL(/insights/);
@@ -38,7 +39,7 @@ test("compare five pairs, recover progress, show counts and persist demo matches
   await expect(page.locator(".match-card")).toHaveCount(6);
   await page.getByRole("button", { name: "関心を送る", exact: true }).first().click();
   await page.reload();
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!).interests.length)).toBe(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:asmr:v1")!).interests.length)).toBe(1);
   await expect(page.getByRole("button", { name: /送信済み|マッチ成立/ })).toHaveCount(1);
   await page.getByRole("button", { name: "この候補を非表示にする" }).first().click();
   await expect(page.locator(".match-card")).toHaveCount(5);
@@ -52,14 +53,14 @@ test("compare five pairs, recover progress, show counts and persist demo matches
 test("failed audio is retryable; rapid choices never submit a second pair", async ({ page }) => {
   await page.goto("/"); await page.getByRole("button", { name: /声を聴きはじめる/ }).click();
   test.skip(!await page.evaluate(() => typeof window.AudioContext !== "undefined"), "Windows WebKit build has no Web Audio; tested in Chromium");
-  await page.route("**/audio/demo/*", route => route.abort());
+  await page.route("**/audio/asmr/*", route => route.abort());
   await page.getByRole("button", { name: "左の声を再生", exact: true }).click();
   await expect(page.locator("main [role=alert]")).toContainText("音声を読み込めませんでした");
-  await page.unroute("**/audio/demo/*");
+  await page.unroute("**/audio/asmr/*");
   await page.getByRole("button", { name: "左の声を再生", exact: true }).click();
   await expect(page.locator(".voice-card.left")).toHaveClass(/playing/);
   await page.getByRole("button", { name: "どちらも好き", exact: true }).dblclick({ delay: 10 });
-  const count = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!).session.answers.length);
+  const count = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:asmr:v1")!).session.answers.length);
   expect(count).toBe(1);
 });
 
@@ -105,9 +106,9 @@ test("onboarding and profile edits persist and a new session retains previous an
   await expect(page.getByRole("switch", { name: /プロフィールの公開希望/ })).toBeChecked();
   await page.goto("/");
   for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "どちらも好き", exact: true }).click();
-  const originalId = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!).session.id);
+  const originalId = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:asmr:v1")!).session.id);
   await page.getByRole("button", { name: "新しい5組を聴く", exact: true }).click();
-  const data = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:v1")!));
+  const data = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:asmr:v1")!));
   expect(data.session.id).not.toBe(originalId);
   expect(data.session.answers).toHaveLength(0);
   expect(data.history[0].answers).toHaveLength(5);
@@ -169,14 +170,34 @@ test("microphone denial, missing recorder and storage quota have actionable erro
   await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException("full", "QuotaExceededError"); }; });
   await page.getByRole("button", { name: /声を聴きはじめる/ }).click();
   await expect(page.locator("main [role=alert]")).toContainText("空き容量");
-  expect(await page.evaluate(() => localStorage.getItem("voice-match:v1"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("voice-match:asmr:v1"))).toBeNull();
 });
 
 test("explicit interests distinguish sent and reciprocal match and persist photo intent", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /声を聴きはじめる/ }).click();
-  for (let i = 0; i < 5; i++) await page.getByRole("button", { name: "どちらも好き", exact: true }).click();
+  const names = new Set<string>();
+  const canPlay = await page.evaluate(() => typeof AudioContext !== "undefined");
+  for (let round = 0; round < 5; round++) {
+    for (const side of ["left", "right"]) {
+      const card = page.locator(`.voice-card.${side}`);
+      const name = await card.getByRole("heading").innerText();
+      const voice = voices.find(v => v.name === name)!;
+      expect(voice).toBeDefined();
+      names.add(name);
+      if (canPlay) {
+        const response = page.waitForResponse(r => new URL(r.url()).pathname === voice.file);
+        await card.getByRole("button").click();
+        expect((await response).ok()).toBe(true);
+        await expect(card).toHaveClass(/playing/);
+      }
+    }
+    await page.getByRole("button", { name: "どちらも好き", exact: true }).click();
+  }
+  expect(names.size).toBe(10);
+  await expect(page.locator(".history-row")).toHaveCount(5);
   await page.getByRole("link", { name: "気になる声を見返す" }).click();
+  await expect(page.locator(".match-card h2")).toHaveText(voices.map(v => v.name));
   await page.locator(".match-card").nth(0).getByRole("button", { name: "関心を送る", exact: true }).click();
   await page.locator(".match-card").nth(1).getByRole("button", { name: "関心を送る", exact: true }).click();
   await expect(page.getByRole("button", { name: "マッチ成立（デモ）", exact: true })).toHaveCount(1);

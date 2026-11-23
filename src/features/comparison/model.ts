@@ -1,17 +1,39 @@
+import catalog from "../../data/voices.json";
+
+const speakers = new Map(catalog.map(voice => [voice.id, voice.speakerId]));
+const speakerOf = (id: string) => speakers.get(id) ?? id;
+export const speakerCount = (ids: string[]) => new Set(ids.map(speakerOf)).size;
+
 export type Choice = "left" | "right" | "both" | "neither";
 export type Pair = { left: string; right: string };
 export type Answer = Pair & { sessionId: string; pairIndex: number; choice: Choice; at: string };
 export type Session = { id: string; pairs: Pair[]; answers: Answer[] };
 export type Voice = { id: string; name: string; file: string; duration: number; tags: string[]; waveform: number[]; speakerId: string; sourceClip: string; source: string; license: string; loudness: number; peak: number };
 
-export function createSession(ids: string[], random = Math.random): Session {
-  const shuffled = [...new Set(ids)];
-  for (let i = shuffled.length - 1; i > 0; i--) {
+function shuffle<T>(items: T[], random: () => number) {
+  for (let i = items.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
+export function createSession(ids: string[], random = Math.random): Session {
+  const groups = new Map<string, string[]>();
+  for (const id of shuffle([...new Set(ids)], random)) {
+    const speaker = speakerOf(id);
+    if (!groups.has(speaker)) groups.set(speaker, []);
+    groups.get(speaker)!.push(id);
   }
   const pairs: Pair[] = [];
-  for (let i = 0; i + 1 < shuffled.length && pairs.length < 5; i += 2) pairs.push({ left: shuffled[i], right: shuffled[i + 1] });
+  while (pairs.length < 5) {
+    const available = shuffle([...groups.values()].filter(group => group.length), random);
+    available.sort((a, b) => b.length - a.length);
+    if (available.length < 2) break;
+    const [left, right] = shuffle([available[0].pop()!, available[1].pop()!], random);
+    pairs.push({ left, right });
+  }
+  shuffle(pairs, random);
   return { id: crypto.randomUUID(), pairs, answers: [] };
 }
 

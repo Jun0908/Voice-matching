@@ -10,4 +10,3 @@
 !/vercel.json
 !/next.config.*
 /public/audio/demo/*
-!/public/audio/demo/voice-*.wav

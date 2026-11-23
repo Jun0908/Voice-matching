@@ -6,7 +6,7 @@ import Link from "next/link";
 import voices from "@/data/voices.json";
 import { useStore } from "@/lib/store";
 import { comparisonPan, VoicePlayer } from "@/lib/audio";
-import type { Choice, Voice } from "@/features/comparison/model";
+import { speakerCount, type Choice, type Voice } from "@/features/comparison/model";
 import { VoiceArt } from "@/components/voice-art";
 
 export function VoiceComparison() {
@@ -41,7 +41,8 @@ export function VoiceComparison() {
     document.addEventListener("visibilitychange", stop); return () => document.removeEventListener("visibilitychange", stop);
   }, []);
   if (!ready) return <div className="empty">保存した進捗を読み込んでいます…</div>;
-  if (!session) return <section className="intro-card"><VoiceArt /><div className="intro-copy"><span className="eyebrow">声からはじまる、小さな出会い。</span><h1>顔より先に、<br />声で会おう。</h1><p>ふたつの声を聴いて、直感で選ぶ。<br />あなたの「好き」が、きっと見つかる。</p><button className="button primary" onClick={start} disabled={voices.length - state.hidden.length < 2 || !!saveError}><Headphones size={22} />声を聴きはじめる</button><Link className="text-link" href="/welcome">はじめての方へ</Link><p className="fine">録音・登録なしで試せる端末内デモです</p>{voices.length - state.hidden.length < 2 && <p role="alert">候補が不足しています。設定で非表示を解除してください。</p>}</div></section>;
+  const availableSpeakers = speakerCount(voices.filter(v => !state.hidden.includes(v.id)).map(v => v.id));
+  if (!session) return <section className="intro-card"><VoiceArt /><div className="intro-copy"><span className="eyebrow">声からはじまる、小さな出会い。</span><h1>顔より先に、<br />声で会おう。</h1><p>ふたりのささやき声を聴いて、直感で選ぶ。<br />あなたの「好き」が、きっと見つかる。</p><button className="button primary" onClick={start} disabled={availableSpeakers < 2 || !!saveError}><Headphones size={22} />声を聴きはじめる</button><Link className="text-link" href="/welcome">はじめての方へ</Link><p className="fine">録音・登録なしで試せる端末内デモです</p>{availableSpeakers < 2 && <p role="alert">候補が不足しています。設定で非表示を解除してください。</p>}</div></section>;
   if (complete) return <div className="empty"><Link href="/insights">好みの結果を見る</Link></div>;
   const pair = session.pairs[index];
   const choose = (choice: Choice) => {
@@ -71,12 +72,12 @@ export function VoiceComparison() {
       const voice = voices.find(v => v.id === pair[side])!;
       const playing = active === side;
       return <article className={`voice-card ${side} ${playing ? "playing" : ""}`} key={side}>
-        <div className="voice-card-top"><span className="side-label" aria-label={side === "left" ? "左" : "右"}>{side === "left" ? "L" : "R"}</span><span className="demo-pill">デモ音声</span></div>
-        <button aria-label={`${side === "left" ? "左" : "右"}の声を${playing || loading === side ? "停止" : "再生"}`} className="voice-avatar play-button" onClick={() => void play(side, voice)}><Headphones className="avatar-headphones" strokeWidth={1.6} /><span className="play-overlay">{playing || loading === side ? <Square size={16} fill="currentColor" /> : <Play size={18} fill="currentColor" />}</span></button>
+        <div className="voice-card-top"><span className="side-label" aria-label={side === "left" ? "左" : "右"}>{side === "left" ? "L" : "R"}</span><span className="demo-pill">合成ASMR</span></div>
+        <button aria-describedby={`name-${voice.id}`} aria-label={`${side === "left" ? "左" : "右"}の声を${playing || loading === side ? "停止" : "再生"}`} className="voice-avatar play-button" onClick={() => void play(side, voice)}><Headphones className="avatar-headphones" strokeWidth={1.6} /><span className="play-overlay">{playing || loading === side ? <Square size={16} fill="currentColor" /> : <Play size={18} fill="currentColor" />}</span></button>
         <div className="waveform" aria-hidden="true">{voice.waveform.map((height, i) => <span className={playing && i / voice.waveform.length <= progress ? "played" : ""} key={i} style={{ height: `${height * 100}%` }} />)}</div>
         <div className="audio-time"><span>{playing ? `0:${String(Math.floor(progress * voice.duration)).padStart(2, "0")}` : "0:00"}</span><span>0:{String(Math.ceil(voice.duration)).padStart(2, "0")}</span></div>
         <p className="play-state" aria-live="polite">{loading === side ? "読み込み中…" : playing ? "再生中" : heard.includes(voice.id) ? "もう一度聴く" : "タップして聴く"}</p>
-        <h2>{voice.name}</h2><p className="voice-caption">日本語の読み上げサンプル</p>
+        <h2 id={`name-${voice.id}`}>{voice.name}</h2><p className="voice-caption">{voice.style}</p>
       </article>;
     })}</div>
     {audioError && <p role="alert" className="notice">{audioError}</p>}

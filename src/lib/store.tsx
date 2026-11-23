@@ -1,11 +1,11 @@
 "use client";
 import { createContext, useContext, useEffect, useState, useRef, useCallback } from "react";
-import { answerSession, createSession, type Choice, type Session } from "@/features/comparison/model";
+import { answerSession, createSession, speakerCount, type Choice, type Session } from "@/features/comparison/model";
 import catalog from "@/data/voices.json";
 
 export type Profile = { nickname: string; age: string; area: string; seeking: string; about: string; visible: boolean; photoRequests: string[] };
 export type State = { version: 1; session: Session | null; history: Session[]; stereo: boolean; hidden: string[]; interests: string[]; profile: Profile; onboarded: boolean };
-const KEY = "voice-match:v1";
+const KEY = "voice-match:asmr:v1";
 export const initialState: State = { version: 1, session: null, history: [], stereo: true, hidden: [], interests: [], onboarded: false, profile: { nickname: "", age: "", area: "", seeking: "指定なし", about: "", visible: false, photoRequests: [] } };
 type Store = { state: State; ready: boolean; error: string; update: (fn: (s: State) => State) => boolean; start: () => boolean; answer: (index: number, choice: Choice) => boolean };
 const Context = createContext<Store | null>(null);
@@ -20,6 +20,14 @@ export function parseState(raw: string): State {
   if (s.version !== 1 || (s.session !== null && !validSession(s.session)) || !Array.isArray(s.history) || !s.history.every(validSession) || typeof s.stereo !== "boolean" || typeof s.onboarded !== "boolean" || !Array.isArray(s.interests) || !s.interests.every(id => ids.has(id)) || !Array.isArray(s.hidden) || !s.hidden.every(id => ids.has(id)) || !s.profile || ![s.profile.nickname, s.profile.age, s.profile.area, s.profile.seeking, s.profile.about].every(v => typeof v === "string") || typeof s.profile.visible !== "boolean" || !Array.isArray(s.profile.photoRequests) || !s.profile.photoRequests.every(id => ids.has(id))) throw new Error("Invalid saved state");
   return s;
 }
+export function importLegacySettings(raw: string): State {
+  const legacy = JSON.parse(raw) as State;
+  if (legacy.version !== 1 || !legacy.profile) throw new Error("Invalid legacy settings");
+  return parseState(JSON.stringify({
+    ...initialState, stereo: legacy.stereo, onboarded: legacy.onboarded,
+    profile: { ...legacy.profile, photoRequests: [] },
+  }));
+}
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState(initialState);
   const current = useRef(initialState);
@@ -28,7 +36,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) { current.current = parseState(raw); setState(current.current); }
+      if (raw !== null) current.current = parseState(raw);
+      else {
+        const legacy = localStorage.getItem("voice-match:v1");
+        if (legacy !== null) current.current = importLegacySettings(legacy);
+      }
+      setState(current.current);
     } catch { setError("端末の保存データを読み込めません。保存領域の設定を確認してください。データは上書きしていません。"); }
     setReady(true);
     // Other tabs are read-only until reload, avoiding competing session writers.
@@ -45,7 +58,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [ready, error]);
   const start = () => {
     const available = catalog.map(v => v.id).filter(id => !current.current.hidden.includes(id));
-    if (available.length < 2) return false;
+    if (speakerCount(available) < 2) return false;
     return update(s => ({ ...s, history: s.session ? [...s.history, s.session] : s.history, session: createSession(available) }));
   };
   const answer = (index: number, choice: Choice) => update(s => s.session ? { ...s, session: answerSession(s.session, index, choice) } : s);
