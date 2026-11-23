@@ -49,6 +49,7 @@ export function VoiceComparison() {
     else if (index + 1 === session.pairs.length) router.push("/insights");
   };
   const play = async (side: "left" | "right", voice: Voice) => {
+    if (typeof window.AudioContext === "undefined") { setAudioError("このブラウザでは音声再生に対応していません。最新版の Safari / Chrome で開いてください。"); return; }
     const token = ++request.current;
     engine.current?.stop(); setAudioError(""); setProgress(0);
     if (active === side || loading === side) { setActive(null); setLoading(null); return; }
