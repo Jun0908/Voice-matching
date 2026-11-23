@@ -1,0 +1,13 @@
+# Upload only application sources and adopted demo audio.
+/*
+!/src
+!/public
+!/package.json
+!/package-lock.json
+!/tsconfig.json
+!/next-env.d.ts
+!/postcss.config.mjs
+!/vercel.json
+!/next.config.*
+/public/audio/demo/*
+!/public/audio/demo/voice-*.wav

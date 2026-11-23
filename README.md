@@ -4,6 +4,14 @@
 
 日本語のモバイル向けWebアプリ。左右の声を聴き比べ、5組の選択から好みを振り返ります。録音・関心・マッチングはこの端末のブラウザ内で完結します。
 
+## Vercel
+
+Vercel の `voice-matching` プロジェクトを GitHub の `Jun0908/Voice-matching` に接続。`main` への Push で本番へ自動デプロイします。Next.js、Node.js 22系（`package.json`）、`npm ci` と `npm run build` を使用します。
+
+WebアプリをHTTPSで配信しますが、録音・履歴・プロフィールは各利用者の端末に保存し、利用者同士の通信は行いません。localhostのデータは公開URLへ自動移行されません。
+
+CLIで再デプロイする場合は、このフォルダで `vercel --prod` を実行します。`.vercelignore` はアプリのソースと採用済みデモ音声だけをアップロード対象にし、未採用音声・ローカル設定・環境変数ファイルを除外します。
+
 ## 起動
 
 検証環境: **Node.js 22.22.1 LTS / npm 10.9.4 / Windows**。`.nvmrc`、`package.json`、`package-lock.json` を保存しています。
