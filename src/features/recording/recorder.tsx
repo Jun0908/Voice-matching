@@ -12,6 +12,7 @@ export function RecordingStudio() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [draft, setDraft] = useState<Blob | null>(null);
+  const [draftDuration, setDraftDuration] = useState(0);
   const [saved, setSaved] = useState<SavedRecording[]>([]);
   const [saving, setSaving] = useState(false);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -50,7 +51,7 @@ export function RecordingStudio() {
         release(); if (!mounted.current) return;
         setSeconds(duration);
         if (duration < 15 || chunks.length === 0) { setError("15秒以上お話しください。保存済みの録音は残っています。もう一度録音できます。"); setPhase(draft ? "preview" : "idle"); return; }
-        setDraft(new Blob(chunks, { type: instance.mimeType })); setPhase("preview");
+        setDraft(new Blob(chunks, { type: instance.mimeType })); setDraftDuration(duration); setPhase("preview");
       };
       started.current = performance.now(); instance.start(250); setSeconds(0); setPhase("recording");
       timer.current = setInterval(() => {
@@ -68,7 +69,7 @@ export function RecordingStudio() {
   const save = async () => {
     if (!draft || saving) return;
     setSaving(true);
-    const value: SavedRecording = { kind, blob: draft, duration: seconds, savedAt: new Date().toISOString(), visible: false };
+    const value: SavedRecording = { kind, blob: draft, duration: draftDuration, savedAt: new Date().toISOString(), visible: false };
     try { await saveRecording(value); setSaved(previous => [...previous.filter(r => r.kind !== kind), value]); setDraft(null); setPhase("idle"); setNotice("非公開で保存しました。この端末でいつでも聴けます。"); setError(""); }
     catch { setError("保存できませんでした。空き容量や保存設定を確認して再試行してください。録り直す前の録音は保持されています。"); }
     finally { setSaving(false); }

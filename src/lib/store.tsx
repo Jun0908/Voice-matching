@@ -43,7 +43,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     catch { setError("保存できませんでした。端末の空き容量とブラウザの保存設定を確認し、再読み込みしてください。"); return false; }
     current.current = next; setState(next); return true;
   }, [ready, error]);
-  const start = () => update(s => ({ ...s, history: s.session ? [...s.history, s.session] : s.history, session: createSession(catalog.map(v => v.id).filter(id => !s.hidden.includes(id))) }));
+  const start = () => {
+    const available = catalog.map(v => v.id).filter(id => !current.current.hidden.includes(id));
+    if (available.length < 2) return false;
+    return update(s => ({ ...s, history: s.session ? [...s.history, s.session] : s.history, session: createSession(available) }));
+  };
   const answer = (index: number, choice: Choice) => update(s => s.session ? { ...s, session: answerSession(s.session, index, choice) } : s);
   return <Context.Provider value={{ state, ready, error, update, start, answer }}>{children}</Context.Provider>;
 }
