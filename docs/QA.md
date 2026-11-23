@@ -44,3 +44,13 @@ Windows版WebKitはこのビルドで `AudioContext`、`MediaRecorder`、`naviga
 - 信頼された HTTPS URL で実マイクの許可・録音・再生・再起動後の復元を確認する。
 - イヤホンによる左右定位・中央再生・音量・読み上げの自然さは聴覚での確認が必要。
 - 本番の通信、アカウント、写真の相互公開、AI生成・推薦は初版の対象外。
+
+## Vercel 本番（2026-11-23）
+
+- 公開URL: https://voice-matching-kappa.vercel.app
+- Vercelプロジェクト: `jkawai0908-9469s-projects/voice-matching`。Next.js / Node.js 22.x / `npm ci` / `npm run build`。
+- GitHub `Jun0908/Voice-matching` の `main` と接続し、Pushから本番デプロイが起動・成功することを確認。
+- HTTPSの公開URLで、Chromium / 幅360pxから左右の再生・切替・停止、5組の比較、10人選択の結果、再読込後の5回答復元を確認。Secure Contextはtrue。
+- 全6画面と採用音声はHTTP 200、未採用音声 `/audio/demo/mio.wav` は404。
+- 配信はデモアプリと採用済み音声。利用者の録音・履歴・設定は各ブラウザ内に保存し、サーバーや別利用者へ送信しない。localhostと公開URLの保存領域は別。
+- HTTPS公開後も、実マイクとイヤホンによる実機確認は上記の残確認に含める。

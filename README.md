@@ -6,6 +6,8 @@
 
 ## Vercel
 
+公開URL: **[https://voice-matching-kappa.vercel.app](https://voice-matching-kappa.vercel.app)**
+
 Vercel の `voice-matching` プロジェクトを GitHub の `Jun0908/Voice-matching` に接続。`main` への Push で本番へ自動デプロイします。Next.js、Node.js 22系（`package.json`）、`npm ci` と `npm run build` を使用します。
 
 WebアプリをHTTPSで配信しますが、録音・履歴・プロフィールは各利用者の端末に保存し、利用者同士の通信は行いません。localhostのデータは公開URLへ自動移行されません。
