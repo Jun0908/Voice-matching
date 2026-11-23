@@ -3,7 +3,13 @@ import { AudioLines, Headphones, Mic, ChartNoAxesCombined, Heart, UserRound, Shi
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useStore } from "@/lib/store";
-const links = [ { href: "/", label: "声を聴く", icon: Headphones }, { href: "/record", label: "録音する", icon: Mic }, { href: "/insights", label: "好み分析", icon: ChartNoAxesCombined }, { href: "/matches", label: "マッチ", icon: Heart }, { href: "/profile", label: "マイページ", icon: UserRound } ];
+const links = [
+  { href: "/", label: "さがす", icon: Headphones },
+  { href: "/matches", label: "マッチ", icon: Heart },
+  { href: "/record", label: "録音する", icon: Mic },
+  { href: "/insights", label: "好み分析", icon: ChartNoAxesCombined },
+  { href: "/profile", label: "マイページ", icon: UserRound },
+];
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const { error } = useStore();

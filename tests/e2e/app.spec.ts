@@ -239,3 +239,31 @@ test("recording auto stops at 30 seconds and releases microphone on leaving", as
   expect(await page.evaluate(() => (window as typeof window & { testTracks: MediaStreamTrack[] }).testTracks.every(t => t.readyState === "ended"))).toBe(true);
   await expect(page.locator(".saved-recording h3")).toHaveText("休日の過ごし方");
 });
+
+test("the listener highlights the swipe direction and commits once on release", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "声を聴きはじめる" }).click();
+  const listener = page.locator(".listener");
+  const listenerBox = await listener.boundingBox();
+  expect(listenerBox).not.toBeNull();
+  const x = listenerBox!.x + listenerBox!.width / 2;
+  const y = listenerBox!.y + listenerBox!.height / 2;
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 18, y);
+  await page.mouse.up();
+  await expect(page.locator(".session-progress strong")).toHaveText("1 / 5");
+
+  for (const [index, direction] of (["left", "right"] as const).entries()) {
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + (direction === "left" ? -75 : 75), y, { steps: 6 });
+    await expect(page.locator(".voice-pair")).toHaveClass(new RegExp("select-" + direction));
+    await page.mouse.up();
+    await expect(page.locator(".session-progress strong")).toHaveText(`${index + 2} / 5`);
+    await expect(page.getByRole("button", { name: "左が好き" })).toBeEnabled();
+  }
+  const choices = await page.evaluate(() => JSON.parse(localStorage.getItem("voice-match:asmr:v1")!).session.answers.map((answer: { choice: string }) => answer.choice));
+  expect(choices).toEqual(["left", "right"]);
+});

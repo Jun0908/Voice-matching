@@ -1,26 +1,31 @@
-# デザイン参照と反映範囲
+# VOICE MATCH の画面デザイン
 
-参照: [ahwenu/koe-match の design](https://github.com/ahwenu/koe-match/tree/main/design)、revision `59310105bc882421b4c83ccc3c93f3b4db711857`。`koe-match.pen` の変数と `exports/01-welcome.png` 〜 `07-date-recap.png` の7画面を確認。
+ユーザー提供の `pen-v33-dark.jpg` をもとに、既存の比較・録音・プロフィール・マッチ・分析画面を設計しています。
 
-## 反映した要素
+- 背景はチャコール、主操作はピンク。左の音声はブルー、右はミント、ラウンド進捗はイエローで示します。文字は自己配信の Zen Kaku Gothic New です。
+- トップでは、重ねたカードからリサの音声を試聴できます。録音と比較にはそれぞれ直接入れます。
+- 比較では、中央の聞き手を挟んで、ニックネーム、再生ボタン、音声から作った波形を配置します。左右へのスワイプと4つの選択ボタンを利用できます。
+- 録音中は波形のアニメーションと経過時間を表示します。マイページのプロフィールカードでは保存した自己紹介を再生できます。
+- スマートフォンでは下部のカプセル型ナビの中央に録音ボタンを置きます。デスクトップでは上部ナビと横並びのトップを使います。
 
-- 白背景 `#FFFFFF`、インク `#231A26`、補助文字 `#6E5F70`、罫線 `#ECE4EA`。
-- プラム `#6B2E5F`、ライラック `#EEE4F6`、オレンジ `#FF6A3D`、ピーチ `#FFE4D8`、レモン `#FFE270`。
-- 見出しは Dela Gothic One、本文・操作は Zen Kaku Gothic New。Fontsourceパッケージで自己配信し、実行時のGoogle Fonts接続は不要。
-- オレンジの主操作、インクの輪郭と下方向の影、丸いプレイヤーカード、レモン色のイヤホン案内。
-- 黒いカプセル型ナビゲーションと黄色の選択タブ。既存の5画面への導線を保つ。
-- 左はライラック／プラム、右はピーチ／オレンジ。選択肢と再生中の輪郭も左右の色に対応。
-- 最初の画面は重なる2つの丸と傾けたステッカー、分析は色違いのカード。録音はテーマのチップ、ライラックの質問、オレンジの録音操作。
+## アバター素材
 
-参照の人物写真・年齢・自己紹介文・AI分身・仮想デート・文字起こしは、既存の端末内デモに新しい機能や人物情報として追加しない。写真なしの仕様に合わせ、人物の丸い枠をイヤホンと声の図形に置き換えた。比較回数・候補名・波形・履歴・関心は保存データに従う。
+アバターは内蔵の imagegen で生成し、WebPに変換して同梱しています。候補者や利用者の写真ではなく、声を聴く操作を表す共通のビジュアルです。
 
-## 検証する見え方と操作
+| 素材 | 用途 |
+| --- | --- |
+| [headphones.webp](../public/art/headphones.webp) | トップのカード、候補アイコン、プロフィール、マッチ成立 |
+| [listener.webp](../public/art/listener.webp) | 聴き比べの中央に配置する聞き手 |
 
-- 360×800 / 390×844 / デスクトップで、配色・フォント・見出し・余白・丸いカード・カプセルナビを目視確認。
-- 全6画面で横スクロールがなく、比較の4選択をナビが隠さない。
-- 左右再生、切替、停止、再試行、4選択、5組完了、復元、関心・設定の操作を維持。
-- 録音のテーマ選択、プレビュー・保存・取消・削除と、15秒制限・30秒停止を維持。
-- 追加したテーマチップは選択中を示し、録音中と未保存プレビュー中は切替不可。
-- 音声の読み込み失敗と再試行、非対応APIの案内、動きを減らす設定を確認。
+<details>
+<summary>使用した生成プロンプト</summary>
 
-実行結果は [QA.md](QA.md) に記録する。
+**ヘッドホン姿**
+
+Horizontal 3:2 editorial studio product photograph of a sculptural warm ivory matte porcelain mannequin bust wearing thick plush ivory premium wireless over-ear headphones, eyes and eyebrows completely absent, smooth blank oval where eyes and nose would be, only a tiny shallow soft mouth indentation. Warm and approachable softly curved youthful abstract adult face, slight 10-degree tilt to right, lovely soft cascading shadow under headphone arch over head, imaginative modern Japanese music brand visual. Centered perfectly symmetrical composition from upper chest up with full overhead headband visible, occupies 90% of frame height, plain powder pastel pink backdrop, natural ambient occlusion, subtle ceramic and velour texture, bright soft beauty lighting. No text, no logos, no extra objects, no UI, photographic commercial quality.
+
+**聞き手**
+
+Square editorial studio 3D render of the head, ears, neck and shoulder line of a smooth abstract matte ivory ceramic adult mannequin, viewed head-on with both ears visibly symmetrical and exposed, featureless oval visage without eyes, nose or mouth. No headphones. Cropped bust from shoulders up in dead center with comfortable margin above. Soft shadows under chin, delicately sculpted ceramic silhouette. Seamless uniform very dark warm charcoal #201b1e studio backdrop with no ground, no text or graphics. This is a binaural listening diagram art asset for a Japanese audio app.
+
+</details>

@@ -75,8 +75,11 @@ export function RecordingStudio() {
     finally { setSaving(false); }
   };
   const busy = phase === "recording" || phase === "requesting" || phase === "stopping" || saving;
-  return <><div className="page-heading"><span className="eyebrow">いつもの言葉で、あなたらしく。</span><h1>今日のこと、<br />声で話そう。</h1><p>15〜30秒の、小さな声のプロフィール。</p></div>
+  return <><div className="page-heading"><h1>声を録音する</h1><p>自己紹介や質問への回答を、15〜30秒で。</p></div>
     <section className="panel recording-panel"><fieldset className="record-topics"><legend>話すテーマ</legend><div className="topic-chips">{questions.map(q => <button type="button" key={q.id} aria-pressed={kind === q.id} disabled={busy || !!draft} onClick={() => { setKind(q.id); setNotice(""); setError(""); }}>{q.label}</button>)}</div></fieldset><p className="record-prompt">{questions.find(q => q.id === kind)?.prompt}</p>
+    <div className={`record-wave ${phase === "recording" ? "live" : ""}`} aria-hidden="true">
+      {Array.from({ length: 46 }, (_, i) => <i key={i} style={{height: `${8 + Math.abs(Math.sin(i * .77) * Math.sin((i + 1) / 47 * Math.PI)) * 88}%`, animationDelay: `${i * -.09}s`}} />)}
+    </div>
     <p className={`record-clock ${phase === "recording" ? "live" : ""}`} role="timer" aria-label="録音経過時間">00:{String(Math.floor(seconds)).padStart(2, "0")}<span> / 00:30</span></p><div className="record-meter"><span style={{ width: `${seconds / 30 * 100}%` }} /></div><p className="fine">{phase === "recording" ? "録音中 · 30秒で自動停止します" : "静かな場所で、いつもの話し方で。"}</p>
     {phase === "recording" ? <button className="button primary" onClick={stop}><Square size={18} />録音を停止</button> : <button className="button primary" disabled={busy} onClick={() => void start()}><Mic size={18} />{phase === "requesting" ? "マイクを起動中…" : phase === "stopping" ? "音声を準備中…" : draft ? "もう一度録音" : "録音をはじめる"}</button>}
     {blob && !busy && <div className="record-preview"><h2><Play size={16} />{draft ? "公開前プレビュー" : "保存済みの録音"}</h2><RecordedAudio blob={blob} label="録音を試聴" audioRef={previewAudio} />{draft && <div className="button-row"><button className="button primary" onClick={() => void save()} disabled={saving}><Save size={17} />非公開で保存</button><button className="button" onClick={() => { setDraft(null); setPhase("idle"); setNotice("録り直しを取り消しました。保存済みの録音に戻りました。"); }}><RotateCcw size={16} />取り消す</button></div>}</div>}
