@@ -4,6 +4,7 @@ test("compare five pairs, recover progress, show counts and persist demo matches
   await page.goto("/");
   await page.getByRole("button", { name: /声を聴きはじめる/ }).click();
   await expect(page.locator(".voice-card")).toHaveCount(2);
+  await page.evaluate(() => document.fonts.ready);
   const lastChoice = await page.getByRole("button", { name: "どちらでもない", exact: true }).boundingBox();
   const nav = await page.getByRole("navigation", { name: "モバイルナビゲーション" }).boundingBox();
   expect(lastChoice!.y + lastChoice!.height).toBeLessThanOrEqual(nav!.y);
@@ -67,8 +68,14 @@ test("360px layouts fit every route and expose labeled navigation", async ({ pag
   for (const path of ["/", "/welcome", "/record", "/insights", "/matches", "/profile"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await expect(page.getByRole("navigation", { name: "モバイルナビゲーション" })).toBeVisible();
+    if (path === "/record") {
+      const record = await page.getByRole("button", { name: "録音をはじめる", exact: true }).boundingBox();
+      const nav = await page.locator(".mobile-nav").boundingBox();
+      expect(record!.y + record!.height).toBeLessThanOrEqual(nav!.y);
+    }
     if (browserName === "chromium") {
       await page.keyboard.press("Tab");
       await expect(page.locator(".skip-link")).toBeFocused();
@@ -192,14 +199,17 @@ test("recording auto stops at 30 seconds and releases microphone on leaving", as
     };
   });
   await page.goto("/record");
-  await page.getByLabel("話すテーマ").selectOption("weekend");
+  await page.getByRole("button", { name: "休日の過ごし方", exact: true }).click();
+  await expect(page.getByRole("button", { name: "休日の過ごし方", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "録音をはじめる" }).click();
+  await expect(page.getByRole("button", { name: "自己紹介", exact: true })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "公開前プレビュー" })).toBeVisible({ timeout: 35000 });
+  await expect(page.getByRole("button", { name: "自己紹介", exact: true })).toBeDisabled();
   await expect(page.getByRole("timer")).toContainText("00:30");
   expect(await page.evaluate(() => (window as typeof window & { testTracks: MediaStreamTrack[] }).testTracks.every(t => t.readyState === "ended"))).toBe(true);
   await page.getByRole("button", { name: "非公開で保存" }).click();
   await expect(page.getByRole("status")).toContainText("非公開で保存");
-  await page.getByLabel("話すテーマ").selectOption("intro");
+  await page.getByRole("button", { name: "自己紹介", exact: true }).click();
   await expect(page.locator("audio")).toHaveCount(0);
   await page.getByRole("button", { name: "録音をはじめる" }).click();
   await expect(page.getByRole("button", { name: "録音を停止" })).toBeVisible();
