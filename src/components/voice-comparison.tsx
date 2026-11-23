@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Play, Square, Headphones, Check, Heart, Minus, AudioLines, RotateCcw } from "lucide-react";
+import { Play, Square, Headphones, Check, Heart, Minus, RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import voices from "@/data/voices.json";
 import { useStore } from "@/lib/store";
 import { VoicePlayer } from "@/lib/audio";
 import type { Choice, Voice } from "@/features/comparison/model";
+import { VoiceArt } from "@/components/voice-art";
 
 export function VoiceComparison() {
   const { state, ready, start, answer, error: saveError } = useStore();
@@ -38,7 +39,7 @@ export function VoiceComparison() {
     document.addEventListener("visibilitychange", stop); return () => document.removeEventListener("visibilitychange", stop);
   }, []);
   if (!ready) return <div className="empty">保存した進捗を読み込んでいます…</div>;
-  if (!session) return <section className="intro-card"><div className="orb"><AudioLines size={44} /></div><span className="eyebrow">YOUR NEXT CONNECTION</span><h1>心が動くのは、<br /><em>どんな声？</em></h1><p>ふたつの声を聴いて、直感で選ぶ。<br />5組の小さな出会いから、あなたの好みが見えてきます。</p><button className="button primary" onClick={start} disabled={voices.length - state.hidden.length < 2 || !!saveError}>声を聴きはじめる <Headphones size={18} /></button><Link className="text-link" href="/welcome">はじめての方へ</Link><p className="fine">録音・登録なしで試せる端末内デモです</p>{voices.length - state.hidden.length < 2 && <p role="alert">候補が不足しています。設定で非表示を解除してください。</p>}</section>;
+  if (!session) return <section className="intro-card"><VoiceArt /><div className="intro-copy"><span className="eyebrow">声からはじまる、小さな出会い。</span><h1>顔より先に、<br />声で会おう。</h1><p>ふたつの声を聴いて、直感で選ぶ。<br />あなたの「好き」が、きっと見つかる。</p><button className="button primary" onClick={start} disabled={voices.length - state.hidden.length < 2 || !!saveError}><Headphones size={22} />声を聴きはじめる</button><Link className="text-link" href="/welcome">はじめての方へ</Link><p className="fine">録音・登録なしで試せる端末内デモです</p>{voices.length - state.hidden.length < 2 && <p role="alert">候補が不足しています。設定で非表示を解除してください。</p>}</div></section>;
   if (complete) return <div className="empty"><Link href="/insights">好みの結果を見る</Link></div>;
   const pair = session.pairs[index];
   const choose = (choice: Choice) => {
@@ -62,22 +63,20 @@ export function VoiceComparison() {
     finally { if (token === request.current) setLoading(null); }
   };
   return <>
-    <div className="page-heading"><span className="eyebrow">LISTEN TO YOUR FEELING</span><h1>声からはじまる、<br className="mobile-break" />小さな出会い。</h1><p>どちらの声を、もっと聴いてみたい？</p></div>
-    <div className="session-progress"><span>今日のリスニング</span><strong>{index + 1} <span>/ {session.pairs.length}</span></strong><div className="progress-track"><div style={{ width: `${index / session.pairs.length * 100}%` }} /></div><div className="step-dots">{session.pairs.map((_, i) => <span className={i < index ? "done" : i === index ? "current" : ""} key={i}>{i < index ? <Check size={10} /> : null}</span>)}</div></div>
-    <div className="listen-tip"><Headphones size={17} /><span>イヤホンで、声の距離まで感じてみて。</span><span className="stereo-label">{state.stereo ? "STEREO ON" : "MONO"}</span></div>
+    <div className="comparison-toolbar"><div className="session-progress"><span>ROUND</span><strong>{index + 1} <span>/ {session.pairs.length}</span></strong><div className="step-dots" aria-hidden="true">{session.pairs.map((_, i) => <span className={i < index ? "done" : i === index ? "current" : ""} key={i} />)}</div></div><div className="listen-tip"><Headphones size={17} /><span>イヤホン推奨</span></div></div>
+    <div className="page-heading comparison-heading"><span className="eyebrow">2人の声を、聴きくらべ。</span><h1>どっちの声が好き？</h1><p>もっと聴きたい。その直感を大切に。</p></div>
     <div className="voice-pair" key={index}>{(["left", "right"] as const).map(side => {
       const voice = voices.find(v => v.id === pair[side])!;
       const playing = active === side;
       return <article className={`voice-card ${side} ${playing ? "playing" : ""}`} key={side}>
-        <div className="voice-card-top"><span className="side-label">{side.toUpperCase()}</span><span className="demo-pill">デモ音声</span></div>
-        <div className="voice-avatar"><AudioLines size={36} strokeWidth={1.3} /></div>
-        <h2>{voice.name}</h2><p className="voice-caption">日本語の読み上げサンプル</p>
+        <div className="voice-card-top"><span className="side-label" aria-label={side === "left" ? "左" : "右"}>{side === "left" ? "L" : "R"}</span><span className="demo-pill">デモ音声</span></div>
+        <button aria-label={`${side === "left" ? "左" : "右"}の声を${playing || loading === side ? "停止" : "再生"}`} className="voice-avatar play-button" onClick={() => void play(side, voice)}><Headphones className="avatar-headphones" strokeWidth={1.6} /><span className="play-overlay">{playing || loading === side ? <Square size={16} fill="currentColor" /> : <Play size={18} fill="currentColor" />}</span></button>
         <div className="waveform" aria-hidden="true">{voice.waveform.map((height, i) => <span className={playing && i / voice.waveform.length <= progress ? "played" : ""} key={i} style={{ height: `${height * 100}%` }} />)}</div>
         <div className="audio-time"><span>{playing ? `0:${String(Math.floor(progress * voice.duration)).padStart(2, "0")}` : "0:00"}</span><span>0:{String(Math.ceil(voice.duration)).padStart(2, "0")}</span></div>
-        <button aria-label={`${side === "left" ? "左" : "右"}の声を${playing || loading === side ? "停止" : "再生"}`} className="play-button" onClick={() => void play(side, voice)}>{playing || loading === side ? <Square size={20} fill="currentColor" /> : <Play size={23} fill="currentColor" />}</button>
         <p className="play-state" aria-live="polite">{loading === side ? "読み込み中…" : playing ? "再生中" : heard.includes(voice.id) ? "もう一度聴く" : "タップして聴く"}</p>
+        <h2>{voice.name}</h2><p className="voice-caption">日本語の読み上げサンプル</p>
       </article>;
-    })}<span className="pair-divider">&</span></div>
+    })}</div>
     {audioError && <p role="alert" className="notice">{audioError}</p>}
     <section className="choice-section"><div className="choice-heading"><span />あなたの直感で選んでください<span /></div><div className="choices"><button className="choose-left" onClick={() => choose("left")} disabled={!!saveError || choosing}><Heart size={18} />左が好き</button><button className="choose-right" onClick={() => choose("right")} disabled={!!saveError || choosing}><Heart size={18} />右が好き</button><button onClick={() => choose("both")} disabled={!!saveError || choosing}><Heart size={17} />どちらも好き</button><button onClick={() => choose("neither")} disabled={!!saveError || choosing}><Minus size={18} />どちらでもない</button></div><p className="fine">正解はありません。いま、心地よいと感じた声を。</p></section>
     <div className="comparison-footer"><span><Check size={14} />選択はこの端末に保存されます</span><button className="plain-button" onClick={() => { request.current++; engine.current?.stop(); setActive(null); setLoading(null); start(); }}><RotateCcw size={13} />最初から</button></div>
