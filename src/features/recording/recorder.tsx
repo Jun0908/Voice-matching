@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Mic, Square, RotateCcw, Save, LockKeyhole, Check, Play } from "lucide-react";
 import { questions, type RecordingKind } from "@/data/questions";
 import { getRecordings, saveRecording, type SavedRecording } from "@/lib/recordings";
+import { RecordedAudio } from "@/components/recorded-audio";
 
 export function RecordingStudio() {
   const [kind, setKind] = useState<RecordingKind>("intro");
@@ -19,7 +20,6 @@ export function RecordingStudio() {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const mounted = useRef(false);
   const previewAudio = useRef<HTMLAudioElement | null>(null);
-  const [url, setUrl] = useState("");
   const release = () => { stream.current?.getTracks().forEach(track => track.stop()); stream.current = null; if (timer.current) clearInterval(timer.current); timer.current = null; };
   useEffect(() => {
     mounted.current = true;
@@ -31,10 +31,6 @@ export function RecordingStudio() {
   }, []);
   const existing = saved.find(item => item.kind === kind);
   const blob = draft ?? existing?.blob;
-  useEffect(() => {
-    if (!blob) { setUrl(""); return; }
-    const value = URL.createObjectURL(blob); setUrl(value); return () => URL.revokeObjectURL(value);
-  }, [blob]);
   const start = async () => {
     if (recorder.current?.state === "recording" || phase === "requesting") return;
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") { setError("このブラウザでは録音できません。HTTPS または localhost で、最新版の Safari / Chrome を開いてください。"); return; }
@@ -82,7 +78,7 @@ export function RecordingStudio() {
     <section className="panel recording-panel"><label className="field-label" htmlFor="record-kind">話すテーマ</label><select id="record-kind" value={kind} disabled={busy || !!draft} onChange={e => { setKind(e.target.value as RecordingKind); setNotice(""); setError(""); }}>{questions.map(q => <option key={q.id} value={q.id}>{q.label}</option>)}</select><p className="record-prompt">{questions.find(q => q.id === kind)?.prompt}</p>
     <div className={`record-orb ${phase === "recording" ? "live" : ""}`}><Mic size={40} strokeWidth={1.3} /></div><p className="record-clock" role="timer" aria-label="録音経過時間">00:{String(Math.floor(seconds)).padStart(2, "0")}<span> / 00:30</span></p><div className="record-meter"><span style={{ width: `${seconds / 30 * 100}%` }} /></div><p className="fine">{phase === "recording" ? "録音中 · 30秒で自動停止します" : "静かな場所で、いつもの話し方で。"}</p>
     {phase === "recording" ? <button className="button primary" onClick={stop}><Square size={18} />録音を停止</button> : <button className="button primary" disabled={busy} onClick={() => void start()}><Mic size={18} />{phase === "requesting" ? "マイクを起動中…" : phase === "stopping" ? "音声を準備中…" : draft ? "もう一度録音" : "録音をはじめる"}</button>}
-    {url && !busy && <div className="record-preview"><h2><Play size={16} />{draft ? "公開前プレビュー" : "保存済みの録音"}</h2><audio ref={previewAudio} key={url} controls src={url} preload="metadata" aria-label="録音を試聴" />{draft && <div className="button-row"><button className="button primary" onClick={() => void save()} disabled={saving}><Save size={17} />非公開で保存</button><button className="button" onClick={() => { setDraft(null); setPhase("idle"); setNotice("録り直しを取り消しました。保存済みの録音に戻りました。"); }}><RotateCcw size={16} />取り消す</button></div>}</div>}
+    {blob && !busy && <div className="record-preview"><h2><Play size={16} />{draft ? "公開前プレビュー" : "保存済みの録音"}</h2><RecordedAudio blob={blob} label="録音を試聴" audioRef={previewAudio} />{draft && <div className="button-row"><button className="button primary" onClick={() => void save()} disabled={saving}><Save size={17} />非公開で保存</button><button className="button" onClick={() => { setDraft(null); setPhase("idle"); setNotice("録り直しを取り消しました。保存済みの録音に戻りました。"); }}><RotateCcw size={16} />取り消す</button></div>}</div>}
     {error && <p className="notice" role="alert">{error}</p>}{notice && <p className="success" role="status"><Check size={16} />{notice}</p>}
     </section><div className="privacy-note"><LockKeyhole size={18} /><p>録音はこの端末だけに保存。初期設定は非公開です。<br />デモの公開設定を変えても、他の人には送信されません。</p></div></>;
 }

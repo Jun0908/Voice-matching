@@ -14,6 +14,8 @@ export function VoiceComparison() {
   const engine = useRef<VoicePlayer | null>(null);
   const request = useRef(0);
   const locked = useRef(false);
+  const unlockTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const [active, setActive] = useState<"left" | "right" | null>(null);
   const [loading, setLoading] = useState<"left" | "right" | null>(null);
   const [progress, setProgress] = useState(0);
@@ -22,8 +24,7 @@ export function VoiceComparison() {
   const session = state.session;
   const index = session?.answers.length ?? 0;
   const complete = !!session && index === session.pairs.length;
-  useEffect(() => { engine.current = new VoicePlayer(); return () => { request.current++; engine.current?.dispose(); }; }, []);
-  useEffect(() => { locked.current = false; }, [index, session?.id]);
+  useEffect(() => { const player = new VoicePlayer(); engine.current = player; return () => { player.dispose(); if (unlockTimer.current) clearTimeout(unlockTimer.current); }; }, []);
   useEffect(() => { if (complete) router.replace("/insights"); }, [complete, router]);
   useEffect(() => { engine.current?.setPan(state.stereo ? active === "left" ? -.65 : .65 : 0); }, [state.stereo, active]);
   useEffect(() => {
@@ -42,8 +43,9 @@ export function VoiceComparison() {
   const pair = session.pairs[index];
   const choose = (choice: Choice) => {
     if (locked.current) return;
-    locked.current = true; request.current++; engine.current?.stop(); setActive(null); setLoading(null); setProgress(0); setAudioError("");
-    if (!answer(index, choice)) locked.current = false;
+    locked.current = true; setChoosing(true); request.current++; engine.current?.stop(); setActive(null); setLoading(null); setProgress(0); setAudioError("");
+    unlockTimer.current = setTimeout(() => { locked.current = false; setChoosing(false); }, 400);
+    if (!answer(index, choice)) { locked.current = false; setChoosing(false); }
     else if (index + 1 === session.pairs.length) router.push("/insights");
   };
   const play = async (side: "left" | "right", voice: Voice) => {
@@ -76,7 +78,7 @@ export function VoiceComparison() {
       </article>;
     })}<span className="pair-divider">&</span></div>
     {audioError && <p role="alert" className="notice">{audioError}</p>}
-    <section className="choice-section"><div className="choice-heading"><span />あなたの直感で選んでください<span /></div><div className="choices"><button className="choose-left" onClick={() => choose("left")} disabled={!!saveError}><Heart size={18} />左が好き</button><button className="choose-right" onClick={() => choose("right")} disabled={!!saveError}><Heart size={18} />右が好き</button><button onClick={() => choose("both")} disabled={!!saveError}><Heart size={17} />どちらも好き</button><button onClick={() => choose("neither")} disabled={!!saveError}><Minus size={18} />どちらでもない</button></div><p className="fine">正解はありません。いま、心地よいと感じた声を。</p></section>
+    <section className="choice-section"><div className="choice-heading"><span />あなたの直感で選んでください<span /></div><div className="choices"><button className="choose-left" onClick={() => choose("left")} disabled={!!saveError || choosing}><Heart size={18} />左が好き</button><button className="choose-right" onClick={() => choose("right")} disabled={!!saveError || choosing}><Heart size={18} />右が好き</button><button onClick={() => choose("both")} disabled={!!saveError || choosing}><Heart size={17} />どちらも好き</button><button onClick={() => choose("neither")} disabled={!!saveError || choosing}><Minus size={18} />どちらでもない</button></div><p className="fine">正解はありません。いま、心地よいと感じた声を。</p></section>
     <div className="comparison-footer"><span><Check size={14} />選択はこの端末に保存されます</span><button className="plain-button" onClick={() => { request.current++; engine.current?.stop(); setActive(null); setLoading(null); start(); }}><RotateCcw size={13} />最初から</button></div>
   </>;
 }

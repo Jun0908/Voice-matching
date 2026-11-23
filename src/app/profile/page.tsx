@@ -6,15 +6,14 @@ import { useStore } from "@/lib/store";
 import { deleteRecording, getRecordings, saveRecording, type SavedRecording } from "@/lib/recordings";
 import { questions, type RecordingKind } from "@/data/questions";
 import voices from "@/data/voices.json";
+import { RecordedAudio } from "@/components/recorded-audio";
 
 function RecordingItem({ recording, onChange }: { recording: SavedRecording; onChange: () => Promise<void> }) {
-  const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { const value = URL.createObjectURL(recording.blob); setUrl(value); return () => URL.revokeObjectURL(value); }, [recording.blob]);
   const action = async (fn: () => Promise<unknown>) => { setBusy(true); setError(""); try { await fn(); await onChange(); } catch { setError("操作を保存できませんでした。空き容量を確認して再試行してください。"); } finally { setBusy(false); } };
-  return <div className="saved-recording"><div className="section-row"><h3>{questions.find(q => q.id === recording.kind)?.label}</h3><span className="demo-pill">{recording.visible ? "公開希望（端末内）" : "非公開"}</span></div><audio src={url} controls aria-label={`${questions.find(q => q.id === recording.kind)?.label}の保存済み録音`} onPlay={e => document.querySelectorAll("audio").forEach(a => { if (a !== e.currentTarget) a.pause(); })} /><div className="section-row"><label className="checkbox-label"><input type="checkbox" disabled={busy} checked={recording.visible} onChange={e => void action(() => saveRecording({ ...recording, visible: e.target.checked }))} />端末内デモで公開希望</label><button className="plain-button danger" disabled={busy} onClick={() => setConfirming(true)}><Trash2 size={15} />削除</button></div>{confirming && <div className="notice"><p>この録音を削除しますか？元には戻せません。</p><div className="button-row"><button className="button" disabled={busy} onClick={() => void action(() => deleteRecording(recording.kind as RecordingKind))}>録音を削除する</button><button className="button" onClick={() => setConfirming(false)}>残す</button></div></div>}{error && <p role="alert" className="notice">{error}</p>}</div>;
+  return <div className="saved-recording"><div className="section-row"><h3>{questions.find(q => q.id === recording.kind)?.label}</h3><span className="demo-pill">{recording.visible ? "公開希望（端末内）" : "非公開"}</span></div><RecordedAudio blob={recording.blob} label={`${questions.find(q => q.id === recording.kind)?.label}の保存済み録音`} /><div className="section-row"><label className="checkbox-label"><input type="checkbox" disabled={busy} checked={recording.visible} onChange={e => void action(() => saveRecording({ ...recording, visible: e.target.checked }))} />端末内デモで公開希望</label><button className="plain-button danger" disabled={busy} onClick={() => setConfirming(true)}><Trash2 size={15} />削除</button></div>{confirming && <div className="notice"><p>この録音を削除しますか？元には戻せません。</p><div className="button-row"><button className="button" disabled={busy} onClick={() => void action(() => deleteRecording(recording.kind as RecordingKind))}>録音を削除する</button><button className="button" onClick={() => setConfirming(false)}>残す</button></div></div>}{error && <p role="alert" className="notice">{error}</p>}</div>;
 }
 export default function ProfilePage() {
   const { state, ready, update } = useStore();
